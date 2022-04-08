@@ -59,6 +59,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/referrer_type_converters.h"
 #include "content/public/common/webplugininfo.h"
+#include "content/public/renderer/v8_value_converter.h"
 #include "electron/buildflags/buildflags.h"
 #include "electron/shell/common/api/api.mojom.h"
 #include "gin/arguments.h"
@@ -162,6 +163,7 @@
 #include "extensions/browser/view_type_utils.h"
 #include "extensions/common/mojom/view_type.mojom.h"
 #include "shell/browser/extensions/electron_extension_web_contents_observer.h"
+#include "shell/browser/extensions/extension_tab_util.h"
 #endif
 
 #if BUILDFLAG(ENABLE_PRINTING)
@@ -3849,6 +3851,20 @@ void WebContents::SetHtmlApiFullscreen(bool enter_fullscreen) {
   native_fullscreen_ = false;
 }
 
+#if BUILDFLAG(ENABLE_ELECTRON_EXTENSIONS)
+v8::Local<v8::Value> WebContents::GetExtensionTabDetails(gin::Arguments* args) {
+  auto tab = extensions::ExtensionTabUtil::GetTabDetailsFromWebContents(this);
+
+  if (!tab)
+    return v8::Null(args->isolate());
+
+  return gin::ConvertToV8(args->isolate(),
+                          *extensions::ExtensionTabUtil::CreateTabObject(
+                               web_contents(), *tab, (*tab).index)
+                               ->ToValue());
+}
+#endif
+
 void WebContents::UpdateHtmlApiFullscreen(bool fullscreen) {
   if (fullscreen == is_html_fullscreen())
     return;
@@ -3995,6 +4011,9 @@ v8::Local<v8::ObjectTemplate> WebContents::FillObjectTemplate(
 #if BUILDFLAG(ENABLE_PRINTING)
       .SetMethod("_print", &WebContents::Print)
       .SetMethod("_printToPDF", &WebContents::PrintToPDF)
+#endif
+#if BUILDFLAG(ENABLE_ELECTRON_EXTENSIONS)
+      .SetMethod("getExtensionTabDetails", &WebContents::GetExtensionTabDetails)
 #endif
       .SetMethod("_setNextChildWebPreferences",
                  &WebContents::SetNextChildWebPreferences)

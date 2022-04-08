@@ -745,6 +745,10 @@ class WebContents : public ExclusiveAccessContext,
   // Update the html fullscreen flag in both browser and renderer.
   void UpdateHtmlApiFullscreen(bool fullscreen);
 
+#if BUILDFLAG(ENABLE_ELECTRON_EXTENSIONS)
+  v8::Local<v8::Value> GetExtensionTabDetails(gin::Arguments* args);
+#endif
+
   v8::Global<v8::Value> session_;
   v8::Global<v8::Value> devtools_web_contents_;
   v8::Global<v8::Value> debugger_;
