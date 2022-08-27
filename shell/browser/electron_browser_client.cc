@@ -1576,8 +1576,8 @@ void ElectronBrowserClient::
           [](content::RenderFrameHost* render_frame_host,
              mojo::PendingAssociatedReceiver<electron::mojom::ElectronApiIPC>
                  receiver) {
-            ElectronApiIPCHandlerImpl::Create(render_frame_host,
-                                              std::move(receiver));
+            ElectronApiIPCHandlerImpl::BindElectronApiIPC(std::move(receiver),
+                                                          render_frame_host);
           },
           &render_frame_host));
     }
@@ -1587,8 +1587,8 @@ void ElectronBrowserClient::
       [](content::RenderFrameHost* render_frame_host,
          mojo::PendingAssociatedReceiver<
              electron::mojom::ElectronWebContentsUtility> receiver) {
-        ElectronWebContentsUtilityHandlerImpl::Create(render_frame_host,
-                                                      std::move(receiver));
+        ElectronWebContentsUtilityHandlerImpl::BindElectronWebContentsUtility(
+            std::move(receiver), render_frame_host);
       },
       &render_frame_host));
 
