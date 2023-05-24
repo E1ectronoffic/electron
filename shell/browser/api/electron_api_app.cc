@@ -714,6 +714,12 @@ void App::OnFinishLaunching(base::Value::Dict launch_info) {
   // applications. Only affects pulseaudio currently.
   media::AudioManager::SetGlobalAppName(Browser::Get()->GetName());
 #endif
+  // Handling notification from previous session requires
+  // ASAP COM server registration instead deffered call as exisit now
+  // GetNotificationPresenter will trigger WindowsToastNotification::Initialize
+  // and as result will register COM server too
+  static_cast<ElectronBrowserClient*>(ElectronBrowserClient::Get())
+      ->GetNotificationPresenter();
   Emit("ready", base::Value(std::move(launch_info)));
 }
 
@@ -1555,6 +1561,27 @@ std::string App::GetUserAgentFallback() {
   return ElectronBrowserClient::Get()->GetUserAgent();
 }
 
+#if BUILDFLAG(IS_WIN)
+// SAP-15762: Support COM activation registration at runtime
+void App::SetBrowserClientNotificationsComServerCLSID(
+    const std::string& com_server_clsid) {
+  ElectronBrowserClient::Get()->SetNotificationsComServerCLSID(
+      com_server_clsid);
+}
+std::string App::GetBrowserClientNotificationsComServerCLSID() {
+  return ElectronBrowserClient::Get()->GetNotificationsComServerCLSID();
+}
+// SAP-21094: Application name displays in incorrect format on notification
+void App::SetBrowserClientNotificationsComDisplayName(
+    const std::string& com_display_name) {
+  ElectronBrowserClient::Get()->SetNotificationsComDisplayName(
+      com_display_name);
+}
+std::string App::GetBrowserClientNotificationsComDisplayName() {
+  return ElectronBrowserClient::Get()->GetNotificationsComDisplayName();
+}
+#endif
+
 #if BUILDFLAG(IS_MAC)
 bool App::MoveToApplicationsFolder(gin_helper::ErrorThrower thrower,
                                    gin::Arguments* args) {
@@ -1847,6 +1874,14 @@ gin::ObjectTemplateBuilder App::GetObjectTemplateBuilder(v8::Isolate* isolate) {
       .SetProperty("userAgentFallback", &App::GetUserAgentFallback,
                    &App::SetUserAgentFallback)
       .SetMethod("configureHostResolver", &ConfigureHostResolver)
+#if BUILDFLAG(IS_WIN)
+      .SetProperty("notificationsComServerCLSID",
+                   &App::GetBrowserClientNotificationsComServerCLSID,
+                   &App::SetBrowserClientNotificationsComServerCLSID)
+      .SetProperty("notificationsComDisplayName",
+                   &App::GetBrowserClientNotificationsComDisplayName,
+                   &App::SetBrowserClientNotificationsComDisplayName)
+#endif
       .SetMethod("enableSandbox", &App::EnableSandbox);
 }
 

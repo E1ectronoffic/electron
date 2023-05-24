@@ -58,12 +58,16 @@ class ElectronBrowserClient : public content::ContentBrowserClient,
   using Delegate = content::ContentBrowserClient;
   void set_delegate(Delegate* delegate) { delegate_ = delegate; }
 
+  // Returns regestered frame host process id
+  absl::optional<int> GetRenderFrameProcessID(const GURL& service_worker_scope);
+
   // Returns the WebContents for pending render processes.
   content::WebContents* GetWebContentsFromProcessID(int process_id);
 
   NotificationPresenter* GetNotificationPresenter();
 
   void WebNotificationAllowed(content::RenderFrameHost* rfh,
+                              // content::WebContents* web_contents,
                               base::OnceCallback<void(bool, bool)> callback);
 
   // content::NavigatorDelegate
@@ -102,6 +106,14 @@ class ElectronBrowserClient : public content::ContentBrowserClient,
   content::SerialDelegate* GetSerialDelegate() override;
 
   content::BluetoothDelegate* GetBluetoothDelegate() override;
+#if BUILDFLAG(IS_WIN)
+  // feat: Support COM activation registration at runtime
+  void SetNotificationsComServerCLSID(const std::string& com_server_clsid);
+  std::string GetNotificationsComServerCLSID();
+  // feat: Application name displays in incorrect format on notification
+  void SetNotificationsComDisplayName(const std::string& com_display_name);
+  std::string GetNotificationsComDisplayName();
+#endif
 
   content::HidDelegate* GetHidDelegate() override;
   content::UsbDelegate* GetUsbDelegate() override;
@@ -317,6 +329,14 @@ class ElectronBrowserClient : public content::ContentBrowserClient,
   raw_ptr<Delegate> delegate_ = nullptr;
 
   std::string user_agent_override_ = "";
+
+#if defined(OS_WIN)
+  // feat: To support COM activation registration at runtime
+  std::string notifications_com_server_clsid_ =
+      "";  // default empty i.e absence support for persistent notifications
+  // feat: Application name displays in incorrect format on notification
+  std::string notifications_com_display_name_ = "";
+#endif
 
   // Simple shared ID generator, used by ProxyingURLLoaderFactory and
   // ProxyingWebSocket classes.

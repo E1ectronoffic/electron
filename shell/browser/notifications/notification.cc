@@ -9,6 +9,20 @@
 
 namespace electron {
 
+const std::u16string NotificationAction::sTYPE_BUTTON = u"button";
+const std::u16string NotificationAction::sTYPE_TEXT = u"text";
+
+NotificationAction::NotificationAction() = default;
+NotificationAction::~NotificationAction() = default;
+
+NotificationAction::NotificationAction(const NotificationAction& copy) {
+  type = copy.type;
+  text = copy.text;
+  arg = copy.arg;
+  icon = copy.icon;
+  placeholder = copy.placeholder;
+}
+
 NotificationOptions::NotificationOptions() = default;
 NotificationOptions::~NotificationOptions() = default;
 
@@ -36,6 +50,18 @@ void Notification::NotificationDismissed() {
 void Notification::NotificationFailed(const std::string& error) {
   if (delegate())
     delegate()->NotificationFailed(error);
+  Destroy();
+}
+
+void Notification::NotificationReplied(const std::string& reply) {
+  if (delegate())
+    delegate()->NotificationReplied(reply);
+  Destroy();
+}
+
+void Notification::NotificationAction(int index) {
+  if (delegate())
+    delegate()->NotificationAction(index);
   Destroy();
 }
 

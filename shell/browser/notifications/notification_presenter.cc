@@ -10,7 +10,7 @@
 
 namespace electron {
 
-NotificationPresenter::NotificationPresenter() = default;
+NotificationPresenter::NotificationPresenter() {}
 
 NotificationPresenter::~NotificationPresenter() {
   for (Notification* notification : notifications_)
@@ -32,14 +32,17 @@ void NotificationPresenter::RemoveNotification(Notification* notification) {
 }
 
 void NotificationPresenter::CloseNotificationWithId(
-    const std::string& notification_id) {
+    const std::string& notification_id,
+    bool try_pending_deletion /* = false*/) {
   auto it = std::find_if(notifications_.begin(), notifications_.end(),
                          [&notification_id](const Notification* n) {
                            return n->notification_id() == notification_id;
                          });
   if (it != notifications_.end()) {
     Notification* notification = (*it);
-    notification->Dismiss();
+    if (!try_pending_deletion) {
+      notification->Dismiss();
+    }
     notifications_.erase(notification);
   }
 }

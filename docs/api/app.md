@@ -518,6 +518,37 @@ gets emitted.
 **Note:** Extra command line arguments might be added by Chromium,
 such as `--original-process-start-time`.
 
+### Event: 'notification-activation' _Windows_
+
+Returns:
+
+* `event` Event
+* `activationArguments` string - contains arguments(in case of any) for toast button or data property in case of non-persistent notification
+* `replyData` string - valid JSON-string which contains result of User input into toast Reply fields. Empty string in case of absence of User input
+
+Emitted after each completed user choise on notification.
+
+```javascript
+const { app } = require('electron')
+
+app.on('notification-activation', (event, activationArguments, replyData) => {
+  console.log('app.on : notification-activation')
+  console.log('activationArguments : ' + activationArguments)
+  console.log('replyData : ' + replyData)
+  if (replyData.length) {
+    const jsonObj = JSON.parse(replyData)
+    console.log('jsonObj : ', jsonObj)
+    Object.values(jsonObj).forEach((item) => {
+      console.log('item : ', item)
+      const keys = Object.keys(item)
+      for (const key in item) {
+        console.log(key, item[key])
+      }
+    })
+  }
+})
+```
+
 ## Methods
 
 The `app` object has the following methods:
@@ -601,7 +632,7 @@ Hides all application windows without minimizing them.
 
 ### `app.isHidden()` _macOS_
 
-Returns `boolean` - `true` if the application—including all of its windows—is hidden (e.g. with `Command-H`), `false` otherwise.
+Returns `boolean` - `true` if the application-including all of its windows???is hidden (e.g. with `Command-H`), `false` otherwise.
 
 ### `app.show()` _macOS_
 
@@ -1123,8 +1154,8 @@ Sets the activation policy for a given app.
 Activation policy types:
 
 * 'regular' - The application is an ordinary app that appears in the Dock and may have a user interface.
-* 'accessory' - The application doesn’t appear in the Dock and doesn’t have a menu bar, but it may be activated programmatically or by clicking on one of its windows.
-* 'prohibited' - The application doesn’t appear in the Dock and may not create windows or be activated.
+* 'accessory' - The application doesn???t appear in the Dock and doesn???t have a menu bar, but it may be activated programmatically or by clicking on one of its windows.
+* 'prohibited' - The application doesn???t appear in the Dock and may not create windows or be activated.
 
 ### `app.importCertificate(options, callback)` _Linux_
 
@@ -1152,7 +1183,7 @@ indicates success while any other value indicates failure according to Chromium 
     available, and insecure DNS lookups will be performed as a fallback. When
     "secure", only DoH lookups will be performed. Defaults to "automatic".
   * `secureDnsServers` string[]&#32;(optional) - A list of DNS-over-HTTP
-    server templates. See [RFC8484 § 3][] for details on the template format.
+    server templates. See [RFC8484 ?? 3][] for details on the template format.
     Most servers support the POST method; the template for such servers is
     simply a URI. Note that for [some DNS providers][doh-providers], the
     resolver will automatically upgrade to DoH unless DoH is explicitly
@@ -1191,7 +1222,7 @@ app.configureHostResolver({
 This API must be called after the `ready` event is emitted.
 
 [doh-providers]: https://source.chromium.org/chromium/chromium/src/+/main:net/dns/public/doh_provider_entry.cc;l=31?q=%22DohProviderEntry::GetList()%22&ss=chromium%2Fchromium%2Fsrc
-[RFC8484 § 3]: https://datatracker.ietf.org/doc/html/rfc8484#section-3
+[RFC8484 ?? 3]: https://datatracker.ietf.org/doc/html/rfc8484#section-3
 
 ### `app.disableHardwareAcceleration()`
 
@@ -1407,7 +1438,7 @@ Returns `Function` - This function **must** be called once you have finished acc
 ```js
 // Start accessing the file.
 const stopAccessingSecurityScopedResource = app.startAccessingSecurityScopedResource(data)
-// You can now access the file outside of the sandbox 🎉
+// You can now access the file outside of the sandbox ????
 
 // Remember to stop accessing the file once you've finished with it.
 stopAccessingSecurityScopedResource()
@@ -1582,3 +1613,19 @@ or Windows [WOW](https://en.wikipedia.org/wiki/Windows_on_Windows)).
 
 You can use this property to prompt users to download the arm64 version of
 your application when they are mistakenly running the x64 version under Rosetta or WOW.
+
+### `app.notificationsComServerCLSID` _Windows_
+
+A `string` which contains a fully formed CLSID used for the notifications COM server.
+This is only necessary for apps that need persistent notifications support.
+The current default value for this property is an empty string `''`. This means that by default persistent notifications are not supported on Windows.
+
+This value should be set before the `ready` event.
+
+### `app.notificationsComDisplayName` _Windows_
+
+A `string` which contains a desired display name in System/Notifications & Actions Windows settings.
+Same name will be displayed as title for each toast created by Electron application.
+The current default value for this property is an empty string `''`. This means that by default toast titles will be displayed with application user model id.
+
+This value should be set before the `ready` event.

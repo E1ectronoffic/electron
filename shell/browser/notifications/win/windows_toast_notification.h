@@ -58,39 +58,45 @@ class WindowsToastNotification : public Notification {
   friend class ToastEventHandler;
 
   HRESULT ShowInternal(const NotificationOptions& options);
-  HRESULT GetToastXml(
-      ABI::Windows::UI::Notifications::IToastNotificationManagerStatics*
-          toastManager,
-      const std::u16string& title,
-      const std::u16string& msg,
+  HRESULT SetToastXml(
+      ABI::Windows::Data::Xml::Dom::IXmlDocument* toast_xml,
+      const std::wstring& title,
+      const std::wstring& msg,
       const std::wstring& icon_path,
-      const std::u16string& timeout_type,
+      const std::wstring& image_path,
+      const std::wstring& timeout_type,
+      const std::wstring& data,
+      const std::vector<electron::NotificationAction>& actions_list,
       const bool silent,
-      ABI::Windows::Data::Xml::Dom::IXmlDocument** toast_xml);
+      const bool require_interaction);
   HRESULT SetXmlAudioSilent(ABI::Windows::Data::Xml::Dom::IXmlDocument* doc);
   HRESULT SetXmlScenarioReminder(
       ABI::Windows::Data::Xml::Dom::IXmlDocument* doc);
+  HRESULT SetXmlScenarioType(ABI::Windows::Data::Xml::Dom::IXmlDocument* doc,
+                             const std::wstring& scenario_type);
   HRESULT SetXmlText(ABI::Windows::Data::Xml::Dom::IXmlDocument* doc,
-                     const std::u16string& text);
-  HRESULT SetXmlText(ABI::Windows::Data::Xml::Dom::IXmlDocument* doc,
-                     const std::u16string& title,
-                     const std::u16string& body);
+                     const std::wstring& text);
   HRESULT SetXmlImage(ABI::Windows::Data::Xml::Dom::IXmlDocument* doc,
-                      const std::wstring& icon_path);
-  HRESULT GetTextNodeList(
-      ScopedHString* tag,
-      ABI::Windows::Data::Xml::Dom::IXmlDocument* doc,
-      ABI::Windows::Data::Xml::Dom::IXmlNodeList** node_list,
-      uint32_t req_length);
+                      const std::wstring& image_path,
+                      const std::wstring& placement);
+  HRESULT SetLaunchParams(ABI::Windows::Data::Xml::Dom::IXmlDocument* doc,
+                          const std::wstring& params);
   HRESULT AppendTextToXml(ABI::Windows::Data::Xml::Dom::IXmlDocument* doc,
                           ABI::Windows::Data::Xml::Dom::IXmlNode* node,
-                          const std::u16string& text);
+                          const std::wstring& text);
+  HRESULT AddAction(ABI::Windows::Data::Xml::Dom::IXmlDocument* doc,
+                    const std::wstring& type,
+                    const std::wstring& content,  // equal to id for input
+                    const std::wstring& arguments,
+                    const std::wstring& icon_path,
+                    const std::wstring& placeholder,
+                    const std::wstring& hint_inputId);
   HRESULT XmlDocumentFromString(
       const wchar_t* xmlString,
       ABI::Windows::Data::Xml::Dom::IXmlDocument** doc);
   HRESULT SetupCallbacks(
       ABI::Windows::UI::Notifications::IToastNotification* toast);
-  bool RemoveCallbacks(
+  HRESULT RemoveCallbacks(
       ABI::Windows::UI::Notifications::IToastNotification* toast);
 
   static ComPtr<
@@ -106,6 +112,8 @@ class WindowsToastNotification : public Notification {
   ComPtr<ToastEventHandler> event_handler_;
   ComPtr<ABI::Windows::UI::Notifications::IToastNotification>
       toast_notification_;
+  PCWSTR AsString(
+      const ComPtr<ABI::Windows::Data::Xml::Dom::IXmlDocument>& xmlDocument);
 };
 
 class ToastEventHandler : public RuntimeClass<RuntimeClassFlags<ClassicCom>,
@@ -129,8 +137,19 @@ class ToastEventHandler : public RuntimeClass<RuntimeClassFlags<ClassicCom>,
   IFACEMETHODIMP Invoke(
       ABI::Windows::UI::Notifications::IToastNotification* sender,
       ABI::Windows::UI::Notifications::IToastFailedEventArgs* e) override;
+  // feat: Upgrade for persistent notifications support
+  void SetNotificationOptions(const NotificationOptions& options) {
+    options_ = options;
+  }
 
  private:
+  // feat: Clear notifications
+  friend class WindowsToastNotification;
+  static ComPtr<
+      ABI::Windows::UI::Notifications::IToastNotificationManagerStatics2>
+      toast_manager_;
+  // feat: Upgrade for persistent notifications support
+  NotificationOptions options_;
   base::WeakPtr<Notification> notification_;  // weak ref.
 };
 
