@@ -2137,6 +2137,8 @@ describe('chromium features', () => {
     });
     after(() => {
       server.close();
+      // clears the user agent metadata
+      app.userAgentMetadataFallback = null as any;
     });
 
     describe('is not empty', () => {
@@ -2147,9 +2149,40 @@ describe('chromium features', () => {
         expect(platform).not.to.be.empty();
       });
 
+      it('global override via setting userAgentMetadataFallback property', async () => {
+        const userAgentMetadata = app.userAgentMetadataFallback;
+        userAgentMetadata.platform = 'electron';
+        app.userAgentMetadataFallback = userAgentMetadata;
+        const w = new BrowserWindow({ show: false });
+        await w.loadURL(serverUrl);
+        const platform = await w.webContents.executeJavaScript('navigator.userAgentData.platform');
+        expect(platform).to.equal('electron');
+      });
+
+      it('global override via setting setUserAgentFallback', async () => {
+        const userAgentMetadata = app.userAgentMetadataFallback;
+        userAgentMetadata.platform = 'electron';
+        app.setUserAgentFallback({ userAgentMetadata });
+        const w = new BrowserWindow({ show: false });
+        await w.loadURL(serverUrl);
+        const platform = await w.webContents.executeJavaScript('navigator.userAgentData.platform');
+        expect(platform).to.equal('electron');
+      });
+
       it('when there is a session-wide UA override', async () => {
         const ses = session.fromPartition(`${Math.random()}`);
         ses.setUserAgent('foobar');
+        const w = new BrowserWindow({ show: false, webPreferences: { session: ses } });
+        await w.loadURL(serverUrl);
+        const platform = await w.webContents.executeJavaScript('navigator.userAgentData.platform');
+        expect(platform).not.to.be.empty();
+      });
+
+      it('when there is a session-wide UA metadata override', async () => {
+        const ses = session.fromPartition(`${Math.random()}`);
+        const userAgentMetadata = ses.getUserAgentMetadata();
+        userAgentMetadata.platform = 'electron';
+        ses.setUserAgentMetadata(userAgentMetadata);
         const w = new BrowserWindow({ show: false, webPreferences: { session: ses } });
         await w.loadURL(serverUrl);
         const platform = await w.webContents.executeJavaScript('navigator.userAgentData.platform');
@@ -2164,6 +2197,29 @@ describe('chromium features', () => {
         expect(platform).not.to.be.empty();
       });
 
+      it('when there is a WebContents-specific UA metadata override', async () => {
+        const userAgentMetadata = app.userAgentMetadataFallback;
+        userAgentMetadata.platform = 'electron';
+        const w = new BrowserWindow({ show: false });
+        w.webContents.setUserAgent({ userAgent: 'foo', userAgentMetadata });
+        await w.loadURL(serverUrl);
+        const platform = await w.webContents.executeJavaScript('navigator.userAgentData.platform');
+        expect(platform).to.equal('electron');
+      });
+
+      it('for child window when there is a WebContents-specific UA metadata override', async () => {
+        const userAgentMetadata = app.userAgentMetadataFallback;
+        userAgentMetadata.platform = 'electron';
+        const w = new BrowserWindow({ show: false });
+        w.webContents.setUserAgent({ userAgent: 'foo', userAgentMetadata });
+        await w.loadURL(serverUrl);
+        const childPromise = once(w.webContents, 'did-create-window');
+        w.webContents.executeJavaScript('window.open("about:blank")', true);
+        const [childWindow] = await childPromise;
+        const platform = await childWindow.webContents.executeJavaScript('navigator.userAgentData.platform');
+        expect(platform).to.equal('electron');
+      });
+
       it('when there is a WebContents-specific UA override at load time', async () => {
         const w = new BrowserWindow({ show: false });
         await w.loadURL(serverUrl, {
@@ -2171,6 +2227,18 @@ describe('chromium features', () => {
         });
         const platform = await w.webContents.executeJavaScript('navigator.userAgentData.platform');
         expect(platform).not.to.be.empty();
+      });
+
+      it('when there is a WebContents-specific UA metadata override at load time', async () => {
+        const userAgentMetadata = app.userAgentMetadataFallback;
+        userAgentMetadata.platform = 'electron';
+        const w = new BrowserWindow({ show: false });
+        await w.loadURL(serverUrl, {
+          userAgent: 'foo',
+          userAgentMetadata: userAgentMetadata
+        });
+        const platform = await w.webContents.executeJavaScript('navigator.userAgentData.platform');
+        expect(platform).to.equal('electron');
       });
     });
 

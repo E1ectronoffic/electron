@@ -347,6 +347,11 @@ void ElectronBrowserContext::SetUserAgent(const std::string& user_agent) {
   user_agent_ = user_agent;
 }
 
+void ElectronBrowserContext::SetUserAgentMetadata(
+    absl::optional<blink::UserAgentMetadata> ua_metadata) {
+  ua_metadata_ = std::move(ua_metadata);
+}
+
 base::FilePath ElectronBrowserContext::GetPath() {
   return path_;
 }
@@ -419,6 +424,11 @@ ElectronBrowserContext::GetSpecialStoragePolicy() {
 
 std::string ElectronBrowserContext::GetUserAgent() const {
   return user_agent_.value_or(ElectronBrowserClient::Get()->GetUserAgent());
+}
+
+blink::UserAgentMetadata ElectronBrowserContext::GetUserAgentMetadata() const {
+  return ua_metadata_.value_or(
+      ElectronBrowserClient::Get()->GetUserAgentMetadata());
 }
 
 predictors::PreconnectManager* ElectronBrowserContext::GetPreconnectManager() {

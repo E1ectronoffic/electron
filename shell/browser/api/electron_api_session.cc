@@ -68,14 +68,17 @@
 #include "shell/browser/net/cert_verifier_client.h"
 #include "shell/browser/net/resolve_host_function.h"
 #include "shell/browser/session_preferences.h"
+#include "shell/common/gin_converters/blink_converter.h"
 #include "shell/common/gin_converters/callback_converter.h"
 #include "shell/common/gin_converters/content_converter.h"
 #include "shell/common/gin_converters/file_path_converter.h"
 #include "shell/common/gin_converters/gurl_converter.h"
 #include "shell/common/gin_converters/media_converter.h"
 #include "shell/common/gin_converters/net_converter.h"
+#include "shell/common/gin_converters/optional_converter.h"
 #include "shell/common/gin_converters/usb_protected_classes_converter.h"
 #include "shell/common/gin_converters/value_converter.h"
+#include "shell/common/gin_helper/arguments.h"
 #include "shell/common/gin_helper/dictionary.h"
 #include "shell/common/gin_helper/object_template_builder.h"
 #include "shell/common/node_includes.h"
@@ -766,15 +769,40 @@ void Session::AllowNTLMCredentialsForDomains(const std::string& domains) {
       std::move(auth_dynamic_params));
 }
 
-void Session::SetUserAgent(const std::string& user_agent,
-                           gin::Arguments* args) {
-  browser_context_->SetUserAgent(user_agent);
+void Session::SetUserAgent(gin::Arguments* gin_args) {
+  gin_helper::Arguments* args = static_cast<gin_helper::Arguments*>(gin_args);
+
+  std::string user_agent;
+  std::string accept_lang;
+  absl::optional<blink::UserAgentMetadata> ua_metadata;
+  bool has_user_agent = false;
+  bool has_ua_metadata = false;
+  bool has_accept_lang = false;
+
+  gin_helper::Dictionary opts;
+
+  if (args->GetNext(&user_agent)) {
+    has_user_agent = true;
+  } else if (args->GetNext(&opts)) {
+    has_user_agent = opts.Get("userAgent", &user_agent);
+    has_ua_metadata = opts.Get("userAgentMetadata", &ua_metadata);
+    has_accept_lang = opts.Get("acceptLanguages", &accept_lang);
+  }
+  if (!has_accept_lang) {
+    has_accept_lang = args->GetNext(&accept_lang);
+  }
+
   auto* network_context =
       browser_context_->GetDefaultStoragePartition()->GetNetworkContext();
-  network_context->SetUserAgent(user_agent);
+  if (has_user_agent) {
+    browser_context_->SetUserAgent(user_agent);
+    network_context->SetUserAgent(user_agent);
+  }
 
-  std::string accept_lang;
-  if (args->GetNext(&accept_lang)) {
+  if (has_ua_metadata) {
+    browser_context_->SetUserAgentMetadata(std::move(ua_metadata));
+  }
+  if (has_accept_lang) {
     network_context->SetAcceptLanguage(
         net::HttpUtil::GenerateAcceptLanguageHeader(accept_lang));
   }
@@ -782,6 +810,15 @@ void Session::SetUserAgent(const std::string& user_agent,
 
 std::string Session::GetUserAgent() {
   return browser_context_->GetUserAgent();
+}
+
+void Session::SetUserAgentMetadata(
+    absl::optional<blink::UserAgentMetadata> ua_metadata) {
+  browser_context_->SetUserAgentMetadata(std::move(ua_metadata));
+}
+
+v8::Local<v8::Value> Session::GetUserAgentMetadata(v8::Isolate* isolate) {
+  return gin::ConvertToV8(isolate, browser_context_->GetUserAgentMetadata());
 }
 
 void Session::SetSSLConfig(network::mojom::SSLConfigPtr config) {
@@ -1333,6 +1370,8 @@ void Session::FillObjectTemplate(v8::Isolate* isolate,
       .SetMethod("isPersistent", &Session::IsPersistent)
       .SetMethod("setUserAgent", &Session::SetUserAgent)
       .SetMethod("getUserAgent", &Session::GetUserAgent)
+      .SetMethod("setUserAgentMetadata", &Session::SetUserAgentMetadata)
+      .SetMethod("getUserAgentMetadata", &Session::GetUserAgentMetadata)
       .SetMethod("setSSLConfig", &Session::SetSSLConfig)
       .SetMethod("getBlobData", &Session::GetBlobData)
       .SetMethod("downloadURL", &Session::DownloadURL)

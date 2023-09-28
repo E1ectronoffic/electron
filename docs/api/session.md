@@ -1247,12 +1247,15 @@ session.defaultSession.allowNTLMCredentialsForDomains('*example.com, *foobar.com
 session.defaultSession.allowNTLMCredentialsForDomains('*')
 ```
 
-#### `ses.setUserAgent(userAgent[, acceptLanguages])`
+#### `ses.setUserAgent(options[, acceptLanguages])`
 
-* `userAgent` string
+* `options` (Object | string) - If `options` is a string, it is interpreted as
+the user agent string.
+  * `userAgent` string
+  * `userAgentMetadata` [UserAgentMetadata](structures/user-agent-metadata.md) (optional)
 * `acceptLanguages` string (optional)
 
-Overrides the `userAgent` and `acceptLanguages` for this session.
+Overrides the `userAgent`, `acceptLanguages` and `userAgentMetadata` for this session.
 
 The `acceptLanguages` must a comma separated ordered list of language codes, for
 example `"en-US,fr,de,ko,zh-CN,ja"`.
@@ -1270,6 +1273,19 @@ will be temporary.
 #### `ses.getUserAgent()`
 
 Returns `string` - The user agent for this session.
+
+#### `ses.setUserAgentMetadata([userAgentMetadata])`
+
+* `userAgentMetadata` [UserAgentMetadata](structures/user-agent-metadata.md) (optional)
+
+Overrides the `userAgentMetadata` for this session.
+
+This doesn't affect existing `WebContents`, and each `WebContents` can use
+`webContents.setUserAgent` to override the session-wide user agent.
+
+#### `ses.getUserAgentMetadata()`
+
+Returns `UserAgentMetadata` - The user agent metadata for this session.
 
 #### `ses.setSSLConfig(config)`
 
