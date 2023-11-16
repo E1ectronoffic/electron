@@ -10,10 +10,14 @@
 
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
+#include "content/public/browser/render_process_host.h"
+#include "gin/dictionary.h"
 #include "shell/browser/api/electron_api_web_contents.h"
 #include "shell/browser/native_window.h"
 #include "shell/browser/ui/message_box.h"
 #include "shell/browser/web_contents_preferences.h"
+#include "shell/common/gin_converters/callback_converter.h"
+#include "shell/common/gin_converters/frame_converter.h"
 #include "shell/common/options_switches.h"
 #include "ui/gfx/image/image_skia.h"
 
@@ -53,16 +57,30 @@ void ElectronJavaScriptDialogManager::RunJavaScriptDialog(
     return std::move(callback).Run(false, std::u16string());
   }
 
-  if (dialog_type != JavaScriptDialogType::JAVASCRIPT_DIALOG_TYPE_ALERT &&
-      dialog_type != JavaScriptDialogType::JAVASCRIPT_DIALOG_TYPE_CONFIRM) {
-    std::move(callback).Run(false, std::u16string());
-    return;
-  }
-
   auto* web_preferences = WebContentsPreferences::From(web_contents);
 
   if (web_preferences && web_preferences->ShouldDisableDialogs()) {
     return std::move(callback).Run(false, std::u16string());
+  }
+
+  // We want to allow a second call (which is no-op) if the user calls the
+  // event callback AND doesn't use preventDefault()
+  using Helper =
+      base::internal::OnceCallbackHolder<bool, const std::u16string&>;
+  auto repeating_callback = base::BindRepeating(
+      &Helper::Run, std::make_unique<Helper>(std::move(callback),
+                                             /*ignore_extra_runs=*/true));
+
+  bool default_prevented =
+      EmitEvent(web_contents, rfh, dialog_type, message_text,
+                default_prompt_text, repeating_callback);
+  if (default_prevented)
+    return;
+
+  if (dialog_type != JavaScriptDialogType::JAVASCRIPT_DIALOG_TYPE_ALERT &&
+      dialog_type != JavaScriptDialogType::JAVASCRIPT_DIALOG_TYPE_CONFIRM) {
+    repeating_callback.Run(false, std::u16string());
+    return;
   }
 
   // No default button
@@ -105,7 +123,7 @@ void ElectronJavaScriptDialogManager::RunJavaScriptDialog(
   electron::ShowMessageBox(
       settings,
       base::BindOnce(&ElectronJavaScriptDialogManager::OnMessageBoxCallback,
-                     base::Unretained(this), std::move(callback), origin));
+                     base::Unretained(this), repeating_callback, origin));
 }
 
 void ElectronJavaScriptDialogManager::RunBeforeUnloadDialog(
@@ -132,6 +150,36 @@ void ElectronJavaScriptDialogManager::OnMessageBoxCallback(
   if (checkbox_checked)
     origin_counts_[origin] = kUserWantsNoMoreDialogs;
   std::move(callback).Run(code == 0, std::u16string());
+}
+
+bool ElectronJavaScriptDialogManager::EmitEvent(
+    content::WebContents* web_contents,
+    content::RenderFrameHost* rfh,
+    content::JavaScriptDialogType dialog_type,
+    const std::u16string& message_text,
+    const std::u16string& default_prompt_text,
+    DialogClosedCallback callback) {
+  v8::Isolate* isolate = JavascriptEnvironment::GetIsolate();
+  v8::HandleScope scope(isolate);
+  auto details = gin::Dictionary::CreateEmpty(isolate);
+  details.Set("message", message_text);
+  details.Set("frame", rfh);
+
+  if (dialog_type == JavaScriptDialogType::JAVASCRIPT_DIALOG_TYPE_ALERT)
+    details.Set("type", "alert");
+  else if (dialog_type == JavaScriptDialogType::JAVASCRIPT_DIALOG_TYPE_CONFIRM)
+    details.Set("type", "confirm");
+  else if (dialog_type == JavaScriptDialogType::JAVASCRIPT_DIALOG_TYPE_PROMPT) {
+    details.Set("type", "prompt");
+    details.Set("defaultValue", default_prompt_text);
+  } else
+    details.Set("type", "");
+
+  auto* api_web_contents = api::WebContents::From(web_contents);
+  if (!api_web_contents)
+    return false;
+
+  return api_web_contents->Emit("dialog", details, std::move(callback));
 }
 
 }  // namespace electron
