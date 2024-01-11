@@ -118,6 +118,7 @@ void WebContentsPreferences::Clear() {
   node_integration_ = false;
   node_integration_in_sub_frames_ = false;
   node_integration_in_worker_ = false;
+  frozen_intrinsics_ = false;
   disable_html_fullscreen_window_resize_ = false;
   webview_tag_ = false;
   sandbox_ = std::nullopt;
@@ -173,6 +174,7 @@ void WebContentsPreferences::SetFromDictionary(
                       &node_integration_in_sub_frames_);
   web_preferences.Get(options::kNodeIntegrationInWorker,
                       &node_integration_in_worker_);
+  web_preferences.Get("frozenIntrinsics", &frozen_intrinsics_);
   web_preferences.Get(options::kDisableHtmlFullscreenWindowResize,
                       &disable_html_fullscreen_window_resize_);
   web_preferences.Get(options::kWebviewTag, &webview_tag_);
@@ -487,6 +489,7 @@ void WebContentsPreferences::OverrideWebkitPrefs(
   prefs->node_integration = node_integration_;
   prefs->node_integration_in_worker = node_integration_in_worker_;
   prefs->node_integration_in_sub_frames = node_integration_in_sub_frames_;
+  prefs->frozen_intrinsics = frozen_intrinsics_;
 
 #if BUILDFLAG(ENABLE_BUILTIN_SPELLCHECKER)
   prefs->enable_spellcheck = spellcheck_;
