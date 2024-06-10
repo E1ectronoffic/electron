@@ -15,11 +15,31 @@ const isHiddenPage = mainFrame.getWebPreference('hiddenPage');
 const isWebView = mainFrame.getWebPreference('isWebView');
 
 // ElectronApiServiceImpl will look for the "ipcNative" hidden object when
-// invoking the 'onMessage' callback.
+// invoking the 'onMessage' or '-ipc-invoke' callback.
 v8Util.setHiddenValue(global, 'ipcNative', {
   onMessage (internal: boolean, channel: string, ports: MessagePort[], args: any[]) {
     const sender = internal ? ipcRendererInternal : ipcRenderer;
     sender.emit(channel, { sender, ports }, ...args);
+  },
+
+  '-ipc-invoke': async function (event: Electron.IpcRendererInvokeEvent, channel: string, args: any[]) {
+    const replyWithResult = (result: any) => event._replyChannel.sendReply({ result });
+    const replyWithError = (error: Error) => {
+      console.error(`Error occurred in handler for '${channel}':`, error);
+      event._replyChannel.sendReply({ error: error.toString() });
+    };
+    const handler = (ipcRenderer as any)._invokeHandlers.get(channel);
+
+    if (!handler) {
+      replyWithError(new Error(`No handler registered for '${channel}'`));
+      return;
+    }
+
+    try {
+      replyWithResult(await Promise.resolve(handler(event, ...args)));
+    } catch (err) {
+      replyWithError(err as Error);
+    }
   }
 });
 
