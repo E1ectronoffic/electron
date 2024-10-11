@@ -231,6 +231,29 @@ A `string` representing the [visibility state](https://developer.mozilla.org/en-
 
 See also how the [Page Visibility API](browser-window.md#page-visibility) is affected by other Electron APIs.
 
+#### `frame.unresponsiveDocumentJSCallStack` _Readonly_ _Experimental_
+
+A `string` representing the JavaScript call stack of the frame while it's in an unresponsive state.
+
+This can be useful to determine why the frame is unresponsive in cases where there's long-running JavaScript.
+For more information, see the [proposed Crash Reporting API.](https://wicg.github.io/crash-reporting/)
+
+```js
+const { app } = require('electron')
+
+app.commandLine.appendSwitch('enable-features', 'DocumentPolicyIncludeJSCallStacksInCrashReports')
+
+app.on('web-contents-created', (_, webContents) => {
+  webContents.on('unresponsive', () => {
+    // Wait for call stack to be collected from the renderer process
+    setTimeout(() => {
+      const jsCallStack = webContents.mainFrame.unresponsiveDocumentJSCallStack
+      console.log('Renderer unresponsive\n', jsCallStack)
+    }, 10)
+  })
+})
+```
+
 [SCA]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm
 [`postMessage`]: https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
 [`MessagePortMain`]: message-port-main.md
