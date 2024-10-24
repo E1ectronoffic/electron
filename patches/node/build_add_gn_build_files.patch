@@ -878,6 +878,71 @@ index 1cb85b9058d06555382e565dc32192a9fa48ed9f..cec9be01abd107e8612f70daf19b4834
  
  // Handles compilation and caching of built-in JavaScript modules and
  // bootstrap scripts, whose source are bundled into the binary as static data.
+diff --git a/src/node_metadata.cc b/src/node_metadata.cc
+index f31b07490c6bf5230d14add54631ef363c820b29..41acee234e74cb4905a0a9a9d732f0f244bcde83 100644
+--- a/src/node_metadata.cc
++++ b/src/node_metadata.cc
+@@ -11,7 +11,7 @@
+ #include "node.h"
+ #include "simdjson.h"
+ #include "simdutf.h"
+-#include "sqlite3.h"
++#include "third_party/sqlite/sqlite3.h"
+ #include "undici_version.h"
+ #include "util.h"
+ #include "uv.h"
+diff --git a/src/node_sqlite.cc b/src/node_sqlite.cc
+index fbef321dcab16c17111a245de74f5ac7eaedddf9..77a49413b633031b7a64c5ca1d807b466815975c 100644
+--- a/src/node_sqlite.cc
++++ b/src/node_sqlite.cc
+@@ -6,7 +6,7 @@
+ #include "node.h"
+ #include "node_errors.h"
+ #include "node_mem-inl.h"
+-#include "sqlite3.h"
++#include "third_party/sqlite/sqlite3.h"
+ #include "util-inl.h"
+ 
+ #include <cinttypes>
+diff --git a/src/node_sqlite.h b/src/node_sqlite.h
+index f62b2e991cb95af050b894e356074ec23c8a90f1..2da341e2ac7047b112b3104614bd9e2b5a9be7b9 100644
+--- a/src/node_sqlite.h
++++ b/src/node_sqlite.h
+@@ -5,7 +5,7 @@
+ 
+ #include "base_object.h"
+ #include "node_mem.h"
+-#include "sqlite3.h"
++#include "third_party/sqlite/sqlite3.h"
+ #include "util.h"
+ 
+ #include <map>
+diff --git a/src/node_webstorage.cc b/src/node_webstorage.cc
+index 15d142e3d8f6e6b5ec74d7d091d9d97daaad2ae8..6ea098aa998c021c6e137c7927eca5949b5a2af5 100644
+--- a/src/node_webstorage.cc
++++ b/src/node_webstorage.cc
+@@ -7,7 +7,7 @@
+ #include "node_errors.h"
+ #include "node_mem-inl.h"
+ #include "path.h"
+-#include "sqlite3.h"
++#include "third_party/sqlite/sqlite3.h"
+ #include "util-inl.h"
+ 
+ namespace node {
+diff --git a/src/node_webstorage.h b/src/node_webstorage.h
+index 2c0c3ab688cae5d9a7c8f881c51ec8136096742c..6ce596e83115c3ec0a33739fcf5fcc5706480fc6 100644
+--- a/src/node_webstorage.h
++++ b/src/node_webstorage.h
+@@ -5,7 +5,7 @@
+ 
+ #include "base_object.h"
+ #include "node_mem.h"
+-#include "sqlite3.h"
++#include "third_party/sqlite/sqlite3.h"
+ #include "util.h"
+ 
+ namespace node {
 diff --git a/tools/generate_config_gypi.py b/tools/generate_config_gypi.py
 index 45b3ac5006140fb55aad0e6b78084b753a947a76..8667857107e4f2481fd98032d4333b086fb7b479 100755
 --- a/tools/generate_config_gypi.py
@@ -1211,7 +1276,7 @@ index 65d0e1be42f0a85418491ebb548278cf431aa6a0..d4a31342f1c6107b029394c6e1d00a1d
    except Exception as e:
      print(str(e))
 diff --git a/unofficial.gni b/unofficial.gni
-index c3b311e4a7f5444b07d4d7028d4621806959804e..3fcb6b5adc497e4ea013008ac9793b85bc655b99 100644
+index c3b311e4a7f5444b07d4d7028d4621806959804e..30abdf3a658242f59100a127bf91109aecbf2efd 100644
 --- a/unofficial.gni
 +++ b/unofficial.gni
 @@ -139,6 +139,7 @@ template("node_gn_build") {
@@ -1222,24 +1287,29 @@ index c3b311e4a7f5444b07d4d7028d4621806959804e..3fcb6b5adc497e4ea013008ac9793b85
        "deps/simdjson",
        "$node_v8_path",
      ]
-@@ -150,7 +151,6 @@ template("node_gn_build") {
+@@ -150,16 +151,19 @@ template("node_gn_build") {
        "deps/llhttp",
        "deps/nbytes",
        "deps/nghttp2",
 -      "deps/ngtcp2",
        "deps/postject",
        "deps/simdutf",
-       "deps/sqlite",
-@@ -160,6 +160,8 @@ template("node_gn_build") {
+-      "deps/sqlite",
++      "//third_party/sqlite",
+       "deps/uvwasi",
+       "//third_party/zlib",
+       "$node_v8_path:v8_libplatform",
      ]
  
++    cflags_cc = [ "-Wno-unguarded-availability-new" ]
++
      sources = [
 +      "src/node_snapshot_stub.cc",
 +      "$root_gen_dir/electron_natives.cc",
        "$target_gen_dir/node_javascript.cc",
      ] + gypi_values.node_sources
  
-@@ -178,8 +180,10 @@ template("node_gn_build") {
+@@ -178,8 +182,10 @@ template("node_gn_build") {
        deps += [ "//third_party/icu" ]
      }
      if (node_use_openssl) {
@@ -1252,7 +1322,7 @@ index c3b311e4a7f5444b07d4d7028d4621806959804e..3fcb6b5adc497e4ea013008ac9793b85
        sources += gypi_values.node_crypto_sources
      }
      if (node_enable_inspector) {
-@@ -276,6 +280,7 @@ template("node_gn_build") {
+@@ -276,6 +282,7 @@ template("node_gn_build") {
    }
  
    executable("node_js2c") {
@@ -1260,7 +1330,7 @@ index c3b311e4a7f5444b07d4d7028d4621806959804e..3fcb6b5adc497e4ea013008ac9793b85
      deps = [
        "deps/simdutf",
        "deps/uv",
-@@ -286,26 +291,75 @@ template("node_gn_build") {
+@@ -286,26 +293,75 @@ template("node_gn_build") {
        "src/embedded_data.cc",
        "src/embedded_data.h",
      ]
@@ -1346,7 +1416,7 @@ index c3b311e4a7f5444b07d4d7028d4621806959804e..3fcb6b5adc497e4ea013008ac9793b85
      outputs = [ "$target_gen_dir/node_javascript.cc" ]
  
      # Get the path to node_js2c executable of the host toolchain.
-@@ -319,11 +373,11 @@ template("node_gn_build") {
+@@ -319,11 +375,11 @@ template("node_gn_build") {
          get_label_info(":node_js2c($host_toolchain)", "name") +
          host_executable_suffix
  
